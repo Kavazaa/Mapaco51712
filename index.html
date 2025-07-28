@@ -19,6 +19,10 @@
         .score-below-avg { background-color: #FEF2F2; border-left-color: #EF4444; }
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
         .sort-btn.active, .filter-btn.active { background-color: #4F46E5; color: white; }
+        /* Toggle Switch CSS */
+        #results-grid.hide-lift .lift-display { display: none; }
+        #toggle-lift:checked ~ .dot { transform: translateX(100%); }
+        #toggle-lift:checked ~ .block { background-color: #a5b4fc; } /* indigo-300 */
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -41,18 +45,11 @@
                             <textarea id="analysis-desc" rows="2" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Detalhes sobre esta análise"></textarea>
                         </div>
                         <div>
-                            <h3 class="font-semibold text-md mb-2 text-indigo-600">Prova MAP (Base)</h3>
-                            <label for="map-file" class="file-input-label w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-all">
-                                <span id="map-file-name">Carregar Planilha MAP</span>
+                            <h3 class="font-semibold text-md mb-2 text-indigo-600">Planilha de Análise</h3>
+                            <label for="analysis-file" class="file-input-label w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-all">
+                                <span id="analysis-file-name">Carregar Planilha (com abas MAP e ACO)</span>
                             </label>
-                            <input type="file" id="map-file" class="hidden" accept=".xlsx, .xls, .csv">
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-md mb-2 text-teal-600">Prova ACO (Final)</h3>
-                            <label for="aco-file" class="file-input-label w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-all">
-                                <span id="aco-file-name">Carregar Planilha ACO</span>
-                            </label>
-                            <input type="file" id="aco-file" class="hidden" accept=".xlsx, .xls, .csv">
+                            <input type="file" id="analysis-file" class="hidden" accept=".xlsx, .xls, .csv">
                         </div>
                         <button id="process-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all">
                             Salvar e Analisar
@@ -79,7 +76,7 @@
                     
                     <!-- Controles de Filtro e Exportação -->
                     <div id="controls-container" class="mb-6 p-4 rounded-xl bg-gray-50 border">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
                             <!-- Filtro de Líder -->
                             <div>
                                 <h3 class="font-semibold text-lg mb-2 text-center">Filtrar por Líder</h3>
@@ -90,8 +87,8 @@
                                 <h3 class="font-semibold text-lg mb-2 text-center">Filtrar por Função</h3>
                                 <div id="role-filters" class="flex flex-wrap justify-center gap-2"></div>
                             </div>
-                             <!-- Ordenação e Exportação -->
-                            <div class="space-y-3">
+                             <!-- Ordenação, Exportação e Visualização -->
+                            <div class="space-y-4">
                                 <div >
                                     <h3 class="font-semibold text-lg mb-2 text-center">Ordenar Por</h3>
                                     <div id="sort-buttons" class="flex flex-wrap justify-center gap-2">
@@ -101,11 +98,23 @@
                                         <button data-sort="score-asc" class="sort-btn px-3 py-1.5 text-sm font-medium rounded-md bg-gray-200 hover:bg-gray-300">Pior NOTA</button>
                                     </div>
                                 </div>
-                                <div>
-                                    <h3 class="font-semibold text-lg mb-2 text-center">Exportar</h3>
-                                    <div class="flex justify-center gap-2">
-                                        <button id="export-pdf-btn" class="px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-700 hover:bg-red-200">PDF</button>
-                                        <button id="export-excel-btn" class="px-3 py-1.5 text-sm font-medium rounded-md bg-green-100 text-green-700 hover:bg-green-200">Excel</button>
+                                <div class="flex justify-around items-start pt-2">
+                                    <div>
+                                        <h3 class="font-semibold text-lg mb-2 text-center">Exportar</h3>
+                                        <div class="flex justify-center gap-2">
+                                            <button id="export-pdf-btn" class="px-3 py-1.5 text-sm font-medium rounded-md bg-red-100 text-red-700 hover:bg-red-200">PDF</button>
+                                            <button id="export-excel-btn" class="px-3 py-1.5 text-sm font-medium rounded-md bg-green-100 text-green-700 hover:bg-green-200">Excel</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-lg mb-2 text-center">Ver LIFT</h3>
+                                        <label for="toggle-lift" class="flex items-center justify-center cursor-pointer">
+                                            <div class="relative">
+                                                <input type="checkbox" id="toggle-lift" class="sr-only">
+                                                <div class="block bg-gray-300 w-12 h-7 rounded-full"></div>
+                                                <div class="dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition"></div>
+                                            </div>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -142,10 +151,8 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         // Elementos da UI
-        const mapFileInput = document.getElementById('map-file');
-        const acoFileInput = document.getElementById('aco-file');
-        const mapFileName = document.getElementById('map-file-name');
-        const acoFileName = document.getElementById('aco-file-name');
+        const analysisFileInput = document.getElementById('analysis-file');
+        const analysisFileName = document.getElementById('analysis-file-name');
         const processBtn = document.getElementById('process-btn');
         const messageArea = document.getElementById('message-area');
         const resultsSection = document.getElementById('results-section');
@@ -164,6 +171,7 @@
         const confirmModal = document.getElementById('confirm-modal');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const toggleLiftSwitch = document.getElementById('toggle-lift');
 
         // Estado da aplicação
         let currentResults = [];
@@ -176,8 +184,8 @@
         // --- Funções de Lógica Principal ---
 
         const handleProcessAndSave = async () => {
-            if (!mapFileInput.files[0] || !acoFileInput.files[0] || !analysisNameInput.value) {
-                showMessage("Por favor, preencha o nome da análise e carregue os dois arquivos.");
+            if (!analysisFileInput.files[0] || !analysisNameInput.value) {
+                showMessage("Por favor, preencha o nome da análise e carregue a planilha.");
                 return;
             }
 
@@ -186,12 +194,11 @@
             clearMessage();
 
             try {
-                const mapData = await parseSheet(mapFileInput.files[0]);
-                const acoData = await parseSheet(acoFileInput.files[0]);
+                const { mapData, acoData } = await parseWorkbook(analysisFileInput.files[0]);
                 const combinedResults = combineData(mapData, acoData);
 
                 if (combinedResults.length === 0) {
-                    showMessage("Nenhum usuário correspondente encontrado. Verifique os emails.");
+                    showMessage("Nenhum usuário correspondente encontrado nas abas MAP e ACO. Verifique a coluna 'user MONDAY'.");
                     return;
                 }
 
@@ -209,10 +216,8 @@
 
                 analysisNameInput.value = '';
                 analysisDescInput.value = '';
-                mapFileInput.value = null;
-                acoFileInput.value = null;
-                updateFileLabel(mapFileInput, mapFileName);
-                updateFileLabel(acoFileInput, acoFileName);
+                analysisFileInput.value = null;
+                updateFileLabel(analysisFileInput, analysisFileName);
 
             } catch (error) {
                 showMessage(error.message);
@@ -230,7 +235,6 @@
                 if (mapItem) {
                     const mapScore = mapItem.score;
                     const acoScore = acoItem.score;
-                    // LIFT CALCULATION: (Final Score - Initial Score) * 10
                     const lift = (acoScore - mapScore) * 10;
                     
                     combined.push({
@@ -258,7 +262,6 @@
                 welcomeMessage.classList.add('hidden');
                 resultsSection.classList.remove('hidden');
                 
-                // Reset filters and sort
                 currentLeaderFilter = 'Todos';
                 currentRoleFilter = 'Todos';
                 currentSort = 'none';
@@ -317,7 +320,7 @@
                         <div class="mt-4 pt-4 border-t border-gray-200 text-center">
                             <p class="text-sm text-gray-500">NOTA</p>
                             <p class="text-3xl font-bold text-gray-800">${result.acoScore.toFixed(1)}</p>
-                            <div class="mt-2 text-lg font-semibold ${liftClass} flex items-center justify-center">
+                            <div class="lift-display mt-2 text-lg font-semibold ${liftClass} flex items-center justify-center">
                                 ${result.lift > 0 ? '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>' : result.lift < 0 ? '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>' : ''}
                                 <span>${liftSign}${result.lift.toFixed(1)}% LIFT</span>
                             </div>
@@ -462,35 +465,64 @@
 
         // --- Funções Auxiliares e de `localStorage` ---
 
-        const parseSheet = (file) => {
-             return new Promise((resolve, reject) => {
+        const parseWorkbook = (file) => {
+            return new Promise((resolve, reject) => {
                 if (!file) reject(new Error("Arquivo não selecionado."));
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
-                        const sheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[sheetName];
-                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                        
-                        const parsedData = json.slice(1).map(row => {
-                            const email = row[1] || '';
-                            const score = parseFloat(String(row[2]).replace(',', '.'));
-                            const leader = row[4] || 'N/A';
-                            const role = row[5] || 'N/A';
-                            if (!email || isNaN(score)) return null;
-                            const name = email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                            return { name, score, leader, role };
-                        }).filter(Boolean);
-                        resolve(parsedData);
+
+                        if (!workbook.SheetNames.includes('MAP') || !workbook.SheetNames.includes('ACO')) {
+                            return reject(new Error("A planilha deve conter as abas 'MAP' e 'ACO'."));
+                        }
+
+                        const mapSheet = workbook.Sheets['MAP'];
+                        const acoSheet = workbook.Sheets['ACO'];
+
+                        const mapData = parseSheetData(mapSheet);
+                        const acoData = parseSheetData(acoSheet);
+
+                        resolve({ mapData, acoData });
+
                     } catch (err) {
-                        reject(new Error("Erro ao ler o arquivo."));
+                        reject(new Error("Erro ao ler o arquivo. Verifique o formato."));
                     }
                 };
                 reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
                 reader.readAsArrayBuffer(file);
             });
+        };
+
+        const parseSheetData = (worksheet) => {
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            const parsedData = json.slice(1).map(row => {
+                const name = row[1] || '';      // Coluna B: user MONDAY
+                const leader = row[2] || 'N/A'; // Coluna C: Lider
+                const role = row[3] || 'N/A';   // Coluna D: Função
+                const scoreRaw = row[17];       // Coluna R: Nota Final
+
+                if (!name || scoreRaw === undefined || scoreRaw === null) return null;
+
+                let score;
+
+                // This logic robustly handles different formats for percentages from Excel.
+                // Case 1: The value is a number between 0 and 1 (e.g., Excel cell with 50% might be read as 0.5).
+                if (typeof scoreRaw === 'number' && scoreRaw >= 0 && scoreRaw <= 1) {
+                    score = scoreRaw * 10; // Convert to a 0-10 scale (e.g., 0.5 * 10 = 5).
+                } 
+                // Case 2: The value is a string (e.g., "50%") or a whole number (e.g., 50).
+                else {
+                    // Convert to string, remove percentage sign, parse, and then divide by 10.
+                    score = parseFloat(String(scoreRaw).replace('%', '')) / 10;
+                }
+                
+                if (isNaN(score)) return null; // If conversion results in NaN, skip this row.
+
+                return { name, leader, role, score };
+            }).filter(Boolean); // Remove null entries.
+            return parsedData;
         };
 
         const getSavedAnalyses = () => JSON.parse(localStorage.getItem('savedAnalyses') || '[]');
@@ -521,7 +553,7 @@
         };
 
         const updateFileLabel = (input, label) => {
-            const fileName = input.files.length > 0 ? input.files[0].name : `Carregar Planilha ${input.id.includes('map') ? 'MAP' : 'ACO'}`;
+            const fileName = input.files.length > 0 ? input.files[0].name : `Carregar Planilha (com abas MAP e ACO)`;
             label.textContent = fileName;
             label.parentElement.classList.toggle('has-file', input.files.length > 0);
         };
@@ -537,16 +569,32 @@
         };
         const clearMessage = () => { messageArea.innerHTML = ''; };
 
+        const applyLiftVisibility = () => {
+            const isLiftVisible = toggleLiftSwitch.checked;
+            if (isLiftVisible) {
+                resultsGrid.classList.remove('hide-lift');
+            } else {
+                resultsGrid.classList.add('hide-lift');
+            }
+        };
+
         // --- Inicialização e Event Listeners ---
         
-        mapFileInput.addEventListener('change', () => updateFileLabel(mapFileInput, mapFileName));
-        acoFileInput.addEventListener('change', () => updateFileLabel(acoFileInput, acoFileName));
+        analysisFileInput.addEventListener('change', () => updateFileLabel(analysisFileInput, analysisFileName));
         processBtn.addEventListener('click', handleProcessAndSave);
         sortButtons.addEventListener('click', handleSort);
         exportPdfBtn.addEventListener('click', exportToPDF);
         exportExcelBtn.addEventListener('click', exportToExcel);
         modalCancelBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
+        toggleLiftSwitch.addEventListener('change', () => {
+            localStorage.setItem('isLiftVisible', toggleLiftSwitch.checked);
+            applyLiftVisibility();
+        });
 
+        // Carregar preferências e dados iniciais
+        const savedLiftPreference = localStorage.getItem('isLiftVisible');
+        toggleLiftSwitch.checked = savedLiftPreference !== null ? JSON.parse(savedLiftPreference) : true;
+        applyLiftVisibility();
         renderSavedAnalyses();
     });
     </script>
