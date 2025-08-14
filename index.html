@@ -60,8 +60,23 @@
                 <!-- Seção de Análises Salvas -->
                 <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
                     <h2 class="text-2xl font-bold text-gray-900 mb-4">Análises Salvas</h2>
-                    <div id="saved-analyses-list" class="space-y-3 max-h-96 overflow-y-auto">
+                    <div id="saved-analyses-list" class="space-y-3 max-h-60 overflow-y-auto">
                         <!-- Análises salvas serão listadas aqui -->
+                    </div>
+                </div>
+
+                 <!-- Seção de Métricas Globais -->
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Métricas Globais</h2>
+                    <div id="global-stats-container" class="space-y-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Média Geral de LIFT</p>
+                            <p id="global-avg-lift" class="text-2xl font-bold text-indigo-600">--</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Média Geral de NOTA</p>
+                            <p id="global-avg-note" class="text-2xl font-bold text-teal-600">--</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -69,9 +84,21 @@
             <!-- Coluna da Direita: Resultados -->
             <div class="lg:col-span-2">
                 <div id="results-section" class="bg-white p-6 rounded-2xl shadow-lg border border-gray-200 min-h-full hidden">
-                    <div id="results-header" class="mb-6">
+                    <div id="results-header" class="mb-2">
                         <h1 id="result-title" class="text-3xl font-bold text-gray-900"></h1>
                         <p id="result-desc" class="mt-1 text-gray-600"></p>
+                    </div>
+
+                     <!-- Stats da Análise Atual -->
+                    <div id="current-analysis-stats" class="flex justify-center gap-8 my-4 p-4 bg-gray-50 rounded-lg border">
+                        <div>
+                            <p class="text-sm font-medium text-center text-gray-600">Média de LIFT</p>
+                            <p id="avg-lift-stat" class="text-2xl font-bold text-indigo-600 text-center">--</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-center text-gray-600">Média de NOTA</p>
+                            <p id="avg-note-stat" class="text-2xl font-bold text-teal-600 text-center">--</p>
+                        </div>
                     </div>
                     
                     <!-- Controles de Filtro e Exportação -->
@@ -172,6 +199,10 @@
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const toggleLiftSwitch = document.getElementById('toggle-lift');
+        const avgLiftStat = document.getElementById('avg-lift-stat');
+        const avgNoteStat = document.getElementById('avg-note-stat');
+        const globalAvgLift = document.getElementById('global-avg-lift');
+        const globalAvgNote = document.getElementById('global-avg-note');
 
         // Estado da aplicação
         let currentResults = [];
@@ -213,6 +244,7 @@
                 saveAnalysis(newAnalysis);
                 renderSavedAnalyses();
                 loadAnalysis(newAnalysis.id);
+                calculateAndDisplayGlobalAverages();
 
                 analysisNameInput.value = '';
                 analysisDescInput.value = '';
@@ -266,6 +298,7 @@
                 currentRoleFilter = 'Todos';
                 currentSort = 'none';
                 
+                calculateAndDisplayCurrentAverages(currentResults);
                 setupFilters(currentResults);
                 renderFilteredResults();
                 updateActiveSavedItem(id);
@@ -434,6 +467,47 @@
             renderFilteredResults();
         };
 
+        // --- Funções de Média ---
+        const calculateAndDisplayCurrentAverages = (results) => {
+            if (results.length === 0) {
+                avgLiftStat.textContent = '--';
+                avgNoteStat.textContent = '--';
+                return;
+            }
+            const totalLift = results.reduce((sum, r) => sum + r.lift, 0);
+            const totalScore = results.reduce((sum, r) => sum + r.acoScore, 0);
+            const avgLift = totalLift / results.length;
+            const avgScore = totalScore / results.length;
+
+            avgLiftStat.textContent = `${avgLift.toFixed(1)}%`;
+            avgNoteStat.textContent = avgScore.toFixed(1);
+        };
+
+        const calculateAndDisplayGlobalAverages = () => {
+            const allAnalyses = getSavedAnalyses();
+            if (allAnalyses.length === 0) {
+                globalAvgLift.textContent = '--';
+                globalAvgNote.textContent = '--';
+                return;
+            }
+
+            const allResults = allAnalyses.flatMap(analysis => analysis.results);
+            if (allResults.length === 0) {
+                globalAvgLift.textContent = '--';
+                globalAvgNote.textContent = '--';
+                return;
+            }
+
+            const totalLift = allResults.reduce((sum, r) => sum + r.lift, 0);
+            const totalScore = allResults.reduce((sum, r) => sum + r.acoScore, 0);
+            const avgLift = totalLift / allResults.length;
+            const avgScore = totalScore / allResults.length;
+
+            globalAvgLift.textContent = `${avgLift.toFixed(1)}%`;
+            globalAvgNote.textContent = avgScore.toFixed(1);
+        };
+
+
         // --- Funções de Exportação ---
 
         const exportToExcel = () => {
@@ -536,6 +610,7 @@
             analyses = analyses.filter(a => a.id != id);
             localStorage.setItem('savedAnalyses', JSON.stringify(analyses));
             renderSavedAnalyses();
+            calculateAndDisplayGlobalAverages();
             if (currentAnalysisId == id) {
                 resultsSection.classList.add('hidden');
                 welcomeMessage.classList.remove('hidden');
@@ -596,6 +671,7 @@
         toggleLiftSwitch.checked = savedLiftPreference !== null ? JSON.parse(savedLiftPreference) : true;
         applyLiftVisibility();
         renderSavedAnalyses();
+        calculateAndDisplayGlobalAverages();
     });
     </script>
 </body>
