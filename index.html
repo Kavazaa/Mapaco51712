@@ -70,12 +70,16 @@
                     <h2 class="text-2xl font-bold text-gray-900 mb-4">Métricas Globais</h2>
                     <div id="global-stats-container" class="space-y-4">
                         <div>
+                            <p class="text-sm font-medium text-gray-600">Média Geral de NOTA</p>
+                            <p id="global-avg-note" class="text-2xl font-bold text-teal-600">--</p>
+                        </div>
+                        <div>
                             <p class="text-sm font-medium text-gray-600">Média Geral de LIFT</p>
                             <p id="global-avg-lift" class="text-2xl font-bold text-indigo-600">--</p>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-gray-600">Média Geral de NOTA</p>
-                            <p id="global-avg-note" class="text-2xl font-bold text-teal-600">--</p>
+                            <p class="text-sm font-medium text-gray-600">Lift Geral dos Reprovados</p>
+                            <p id="global-avg-reprovados-lift" class="text-2xl font-bold text-orange-500">--</p>
                         </div>
                     </div>
                 </div>
@@ -90,14 +94,18 @@
                     </div>
 
                      <!-- Stats da Análise Atual -->
-                    <div id="current-analysis-stats" class="flex justify-center gap-8 my-4 p-4 bg-gray-50 rounded-lg border">
+                    <div id="current-analysis-stats" class="grid grid-cols-1 sm:grid-cols-3 gap-4 my-4 p-4 bg-gray-50 rounded-lg border">
+                        <div>
+                            <p class="text-sm font-medium text-center text-gray-600">Média de NOTA</p>
+                            <p id="avg-note-stat" class="text-2xl font-bold text-teal-600 text-center">--</p>
+                        </div>
                         <div>
                             <p class="text-sm font-medium text-center text-gray-600">Média de LIFT</p>
                             <p id="avg-lift-stat" class="text-2xl font-bold text-indigo-600 text-center">--</p>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-center text-gray-600">Média de NOTA</p>
-                            <p id="avg-note-stat" class="text-2xl font-bold text-teal-600 text-center">--</p>
+                            <p class="text-sm font-medium text-center text-gray-600">Lift Reprovados (MAP&lt;7)</p>
+                            <p id="avg-reprovados-lift-stat" class="text-2xl font-bold text-orange-500 text-center">--</p>
                         </div>
                     </div>
                     
@@ -201,8 +209,10 @@
         const toggleLiftSwitch = document.getElementById('toggle-lift');
         const avgLiftStat = document.getElementById('avg-lift-stat');
         const avgNoteStat = document.getElementById('avg-note-stat');
+        const avgReprovadosLiftStat = document.getElementById('avg-reprovados-lift-stat');
         const globalAvgLift = document.getElementById('global-avg-lift');
         const globalAvgNote = document.getElementById('global-avg-note');
+        const globalAvgReprovadosLift = document.getElementById('global-avg-reprovados-lift');
 
         // Estado da aplicação
         let currentResults = [];
@@ -275,7 +285,18 @@
                         role: acoItem.role,
                         acoScore: acoScore,
                         mapScore: mapScore,
-                        lift: lift
+                        lift: lift,
+                        isNew: false
+                    });
+                } else {
+                    combined.push({
+                        name: acoItem.name,
+                        leader: acoItem.leader,
+                        role: acoItem.role,
+                        acoScore: acoItem.score,
+                        mapScore: null,
+                        lift: null,
+                        isNew: true
                     });
                 }
             });
@@ -320,9 +341,9 @@
             }
 
             if (currentSort === 'lift-desc') {
-                filteredData.sort((a, b) => b.lift - a.lift);
+                filteredData.sort((a, b) => (b.lift ?? -Infinity) - (a.lift ?? -Infinity));
             } else if (currentSort === 'lift-asc') {
-                filteredData.sort((a, b) => a.lift - b.lift);
+                filteredData.sort((a, b) => (a.lift ?? Infinity) - (b.lift ?? Infinity));
             } else if (currentSort === 'score-desc') {
                 filteredData.sort((a, b) => b.acoScore - a.acoScore);
             } else if (currentSort === 'score-asc') {
@@ -339,24 +360,27 @@
                 return;
             }
             dataToDisplay.forEach(result => {
+                const isNewUser = result.isNew;
                 const liftClass = result.lift > 0 ? 'lift-positive' : result.lift < 0 ? 'lift-negative' : 'lift-neutral';
                 const liftSign = result.lift > 0 ? '+' : '';
                 const scoreClass = result.acoScore >= AVERAGE_SCORE ? 'score-above-avg' : 'score-below-avg';
 
                 const card = `
-                    <div class="result-card bg-white rounded-xl shadow-md border-l-4 ${scoreClass} p-5 flex flex-col justify-between transition-transform transform hover:scale-105" data-leader="${result.leader}" data-role="${result.role}">
+                    <div class="result-card relative bg-white rounded-xl shadow-md border-l-4 ${scoreClass} p-5 flex flex-col justify-between transition-transform transform hover:scale-105" data-leader="${result.leader}" data-role="${result.role}">
+                        ${isNewUser ? '<div class="absolute top-0 left-0 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-br-lg rounded-tl-lg">NEW</div>' : ''}
                         <div>
-                            <h4 class="font-bold text-lg text-gray-900 truncate">${result.name}</h4>
+                            <h4 class="font-bold text-lg text-gray-900 truncate ${isNewUser ? 'pt-2' : ''}">${result.name}</h4>
                             <p class="text-sm text-gray-500 mb-1">${result.role}</p>
                             <p class="text-sm text-gray-600 font-medium">Líder: <span class="font-semibold">${result.leader}</span></p>
                         </div>
                         <div class="mt-4 pt-4 border-t border-gray-200 text-center">
                             <p class="text-sm text-gray-500">NOTA</p>
                             <p class="text-3xl font-bold text-gray-800">${result.acoScore.toFixed(1)}</p>
+                            ${!isNewUser ? `
                             <div class="lift-display mt-2 text-lg font-semibold ${liftClass} flex items-center justify-center">
                                 ${result.lift > 0 ? '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>' : result.lift < 0 ? '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>' : ''}
                                 <span>${liftSign}${result.lift.toFixed(1)}% LIFT</span>
-                            </div>
+                            </div>` : '<div class="h-8 mt-2"></div>'}
                         </div>
                     </div>
                 `;
@@ -472,15 +496,34 @@
             if (results.length === 0) {
                 avgLiftStat.textContent = '--';
                 avgNoteStat.textContent = '--';
+                avgReprovadosLiftStat.textContent = '--';
                 return;
             }
-            const totalLift = results.reduce((sum, r) => sum + r.lift, 0);
+            // General Score Average (includes everyone)
             const totalScore = results.reduce((sum, r) => sum + r.acoScore, 0);
-            const avgLift = totalLift / results.length;
-            const avgScore = totalScore / results.length;
+            avgNoteStat.textContent = (totalScore / results.length).toFixed(1);
 
-            avgLiftStat.textContent = `${avgLift.toFixed(1)}%`;
-            avgNoteStat.textContent = avgScore.toFixed(1);
+            // Filter out new users for LIFT calculations
+            const existingUsers = results.filter(r => !r.isNew);
+            if (existingUsers.length > 0) {
+                const totalLift = existingUsers.reduce((sum, r) => sum + r.lift, 0);
+                avgLiftStat.textContent = `${(totalLift / existingUsers.length).toFixed(1)}%`;
+            } else {
+                avgLiftStat.textContent = 'N/A';
+            }
+
+            // Reprovados Lift Average (only for existing users)
+            const reprovadosResults = existingUsers.filter(r => r.mapScore < 7);
+            if (reprovadosResults.length > 0) {
+                const totalReprovadosLift = reprovadosResults.reduce((sum, r) => sum + r.lift, 0);
+                avgReprovadosLiftStat.textContent = `${(totalReprovadosLift / reprovadosResults.length).toFixed(1)}%`;
+                avgReprovadosLiftStat.classList.remove('text-gray-400');
+                avgReprovadosLiftStat.classList.add('text-orange-500');
+            } else {
+                avgReprovadosLiftStat.textContent = 'N/A';
+                avgReprovadosLiftStat.classList.add('text-gray-400');
+                avgReprovadosLiftStat.classList.remove('text-orange-500');
+            }
         };
 
         const calculateAndDisplayGlobalAverages = () => {
@@ -488,6 +531,7 @@
             if (allAnalyses.length === 0) {
                 globalAvgLift.textContent = '--';
                 globalAvgNote.textContent = '--';
+                globalAvgReprovadosLift.textContent = '--';
                 return;
             }
 
@@ -495,16 +539,35 @@
             if (allResults.length === 0) {
                 globalAvgLift.textContent = '--';
                 globalAvgNote.textContent = '--';
+                globalAvgReprovadosLift.textContent = '--';
                 return;
             }
 
-            const totalLift = allResults.reduce((sum, r) => sum + r.lift, 0);
+            // Global General Score Average (includes everyone)
             const totalScore = allResults.reduce((sum, r) => sum + r.acoScore, 0);
-            const avgLift = totalLift / allResults.length;
-            const avgScore = totalScore / allResults.length;
+            globalAvgNote.textContent = (totalScore / allResults.length).toFixed(1);
 
-            globalAvgLift.textContent = `${avgLift.toFixed(1)}%`;
-            globalAvgNote.textContent = avgScore.toFixed(1);
+            // Global General Lift Average (existing users only)
+            const allExistingUsers = allResults.filter(r => !r.isNew);
+            if (allExistingUsers.length > 0) {
+                const totalLift = allExistingUsers.reduce((sum, r) => sum + r.lift, 0);
+                globalAvgLift.textContent = `${(totalLift / allExistingUsers.length).toFixed(1)}%`;
+            } else {
+                globalAvgLift.textContent = 'N/A';
+            }
+
+            // Global Reprovados Lift Average (existing users only)
+            const allReprovadosResults = allExistingUsers.filter(r => r.mapScore < 7);
+            if (allReprovadosResults.length > 0) {
+                const totalReprovadosLift = allReprovadosResults.reduce((sum, r) => sum + r.lift, 0);
+                globalAvgReprovadosLift.textContent = `${(totalReprovadosLift / allReprovadosResults.length).toFixed(1)}%`;
+                globalAvgReprovadosLift.classList.remove('text-gray-400');
+                globalAvgReprovadosLift.classList.add('text-orange-500');
+            } else {
+                globalAvgReprovadosLift.textContent = 'N/A';
+                globalAvgReprovadosLift.classList.add('text-gray-400');
+                globalAvgReprovadosLift.classList.remove('text-orange-500');
+            }
         };
 
 
