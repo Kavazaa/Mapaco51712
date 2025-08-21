@@ -23,6 +23,7 @@
         #results-grid.hide-lift .lift-display { display: none; }
         #toggle-lift:checked ~ .dot { transform: translateX(100%); }
         #toggle-lift:checked ~ .block { background-color: #a5b4fc; } /* indigo-300 */
+        .result-card { cursor: pointer; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -47,7 +48,7 @@
                         <div>
                             <h3 class="font-semibold text-md mb-2 text-indigo-600">Planilha de Análise</h3>
                             <label for="analysis-file" class="file-input-label w-full flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-all">
-                                <span id="analysis-file-name">Carregar Planilha (com abas MAP e ACO)</span>
+                                <span id="analysis-file-name">Carregar Planilha (com abas MAP, ACO e PROVA)</span>
                             </label>
                             <input type="file" id="analysis-file" class="hidden" accept=".xlsx, .xls, .csv">
                         </div>
@@ -171,7 +172,7 @@
         </div>
     </div>
 
-    <!-- Modal de Confirmação -->
+    <!-- Modal de Confirmação de Exclusão -->
     <div id="confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <h3 class="text-lg font-bold">Confirmar Exclusão</h3>
@@ -179,6 +180,21 @@
             <div class="mt-6 flex justify-end gap-3">
                 <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
                 <button id="modal-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes da Prova -->
+    <div id="proof-modal" class="fixed inset-0 z-40 flex items-center justify-center p-4 modal-backdrop hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 id="proof-modal-title" class="text-2xl font-bold">Detalhes da Prova</h2>
+                <button id="proof-modal-close" class="p-2 rounded-full hover:bg-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="proof-modal-content" class="p-6 overflow-y-auto space-y-6">
+                <!-- Conteúdo da prova será inserido aqui -->
             </div>
         </div>
     </div>
@@ -213,6 +229,10 @@
         const globalAvgLift = document.getElementById('global-avg-lift');
         const globalAvgNote = document.getElementById('global-avg-note');
         const globalAvgReprovadosLift = document.getElementById('global-avg-reprovados-lift');
+        const proofModal = document.getElementById('proof-modal');
+        const proofModalTitle = document.getElementById('proof-modal-title');
+        const proofModalContent = document.getElementById('proof-modal-content');
+        const proofModalClose = document.getElementById('proof-modal-close');
 
         // Estado da aplicação
         let currentResults = [];
@@ -235,11 +255,11 @@
             clearMessage();
 
             try {
-                const { mapData, acoData } = await parseWorkbook(analysisFileInput.files[0]);
-                const combinedResults = combineData(mapData, acoData);
+                const { mapData, acoData, questionMap } = await parseWorkbook(analysisFileInput.files[0]);
+                const combinedResults = combineData(mapData, acoData, questionMap);
 
                 if (combinedResults.length === 0) {
-                    showMessage("Nenhum usuário correspondente encontrado nas abas MAP e ACO. Verifique a coluna 'user MONDAY'.");
+                    showMessage("Nenhum usuário correspondente encontrado nas abas MAP e ACO. Verifique a coluna de Email.");
                     return;
                 }
 
@@ -273,31 +293,16 @@
             const mapDataMap = new Map(mapData.map(item => [item.name, item]));
             let combined = [];
             acoData.forEach(acoItem => {
+                const { score: acoScore, ...restOfAcoItem } = acoItem;
                 const mapItem = mapDataMap.get(acoItem.name);
+
                 if (mapItem) {
                     const mapScore = mapItem.score;
-                    const acoScore = acoItem.score;
                     const lift = (acoScore - mapScore) * 10;
                     
-                    combined.push({
-                        name: acoItem.name,
-                        leader: acoItem.leader,
-                        role: acoItem.role,
-                        acoScore: acoScore,
-                        mapScore: mapScore,
-                        lift: lift,
-                        isNew: false
-                    });
+                    combined.push({ ...restOfAcoItem, acoScore, mapScore, lift, isNew: false });
                 } else {
-                    combined.push({
-                        name: acoItem.name,
-                        leader: acoItem.leader,
-                        role: acoItem.role,
-                        acoScore: acoItem.score,
-                        mapScore: null,
-                        lift: null,
-                        isNew: true
-                    });
+                    combined.push({ ...restOfAcoItem, acoScore, mapScore: null, lift: null, isNew: true });
                 }
             });
             return combined;
@@ -366,7 +371,7 @@
                 const scoreClass = result.acoScore >= AVERAGE_SCORE ? 'score-above-avg' : 'score-below-avg';
 
                 const card = `
-                    <div class="result-card relative bg-white rounded-xl shadow-md border-l-4 ${scoreClass} p-5 flex flex-col justify-between transition-transform transform hover:scale-105" data-leader="${result.leader}" data-role="${result.role}">
+                    <div class="result-card relative bg-white rounded-xl shadow-md border-l-4 ${scoreClass} p-5 flex flex-col justify-between transition-transform transform hover:scale-105" data-username="${result.name}">
                         ${isNewUser ? '<div class="absolute top-0 left-0 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-br-lg rounded-tl-lg">NEW</div>' : ''}
                         <div>
                             <h4 class="font-bold text-lg text-gray-900 truncate ${isNewUser ? 'pt-2' : ''}">${result.name}</h4>
@@ -376,7 +381,7 @@
                         <div class="mt-4 pt-4 border-t border-gray-200 text-center">
                             <p class="text-sm text-gray-500">NOTA</p>
                             <p class="text-3xl font-bold text-gray-800">${result.acoScore.toFixed(1)}</p>
-                            ${!isNewUser ? `
+                            ${!isNewUser && result.lift !== null ? `
                             <div class="lift-display mt-2 text-lg font-semibold ${liftClass} flex items-center justify-center">
                                 ${result.lift > 0 ? '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>' : result.lift < 0 ? '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>' : ''}
                                 <span>${liftSign}${result.lift.toFixed(1)}% LIFT</span>
@@ -490,7 +495,7 @@
             
             renderFilteredResults();
         };
-
+        
         // --- Funções de Média ---
         const calculateAndDisplayCurrentAverages = (results) => {
             if (results.length === 0) {
@@ -609,56 +614,155 @@
                 reader.onload = (e) => {
                     try {
                         const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
+                        const workbook = XLSX.read(data, { type: 'array', cellStyles: true });
 
-                        if (!workbook.SheetNames.includes('MAP') || !workbook.SheetNames.includes('ACO')) {
-                            return reject(new Error("A planilha deve conter as abas 'MAP' e 'ACO'."));
+                        if (!workbook.SheetNames.includes('MAP') || !workbook.SheetNames.includes('ACO') || !workbook.SheetNames.includes('PROVA')) {
+                            return reject(new Error("A planilha deve conter as abas 'MAP', 'ACO' e 'PROVA'."));
                         }
 
                         const mapSheet = workbook.Sheets['MAP'];
                         const acoSheet = workbook.Sheets['ACO'];
+                        const proofSheet = workbook.Sheets['PROVA'];
 
-                        const mapData = parseSheetData(mapSheet);
-                        const acoData = parseSheetData(acoSheet);
+                        const mapData = parseSheetData(mapSheet, false);
+                        const { acoData, questionMap } = parseAcoAndProofData(acoSheet, proofSheet);
 
-                        resolve({ mapData, acoData });
+                        resolve({ mapData, acoData, questionMap });
 
                     } catch (err) {
-                        reject(new Error("Erro ao ler o arquivo. Verifique o formato."));
+                        console.error(err);
+                        reject(new Error("Erro ao ler o arquivo. Verifique o formato e as abas."));
                     }
                 };
                 reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
                 reader.readAsArrayBuffer(file);
             });
         };
+        
+        const parseAcoAndProofData = (acoSheet, proofSheet) => {
+            const questionJson = XLSX.utils.sheet_to_json(proofSheet, { header: 1 });
+            const questionMap = new Map(questionJson.map(row => [String(row[0]).trim(), row[1]]));
+
+            const acoJson = XLSX.utils.sheet_to_json(acoSheet, { header: 1 });
+            const headers = acoJson[0].map(h => typeof h === 'string' ? h.trim() : h);
+            const correctAnswers = new Map();
+            const questionsToIgnore = [
+                'O conteúdo apresentado é relevante?',
+                'Esse conteúdo te ajudará nas suas atividades do dia a dia?'
+            ];
+            
+            // First pass: find all correct answers
+            for (let i = 1; i < acoJson.length; i++) {
+                const row = acoJson[i];
+                for (let j = 10; j < headers.length; j++) { // Start from column K
+                    const questionId = headers[j];
+                    if (!questionId) continue;
+                    const cellAddress = XLSX.utils.encode_cell({ r: i, c: j });
+                    const cell = acoSheet[cellAddress];
+                    const cellColor = cell?.s?.fgColor?.rgb || cell?.s?.bgColor?.rgb;
+                    if (cellColor === '00C875' || cellColor === 'FF00C875') {
+                        correctAnswers.set(questionId, cell.v);
+                    }
+                }
+            }
+            
+            // Second pass: build user data
+            const acoData = acoJson.slice(1).map((row, rowIndex) => {
+                const email = row[2] || ''; // Coluna C -> Email
+                if (!email) return null;
+                
+                const name = email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                const leader = row[1] || 'N/A'; // Coluna B -> LÍDER
+                const role = row[3] || 'N/A';   // Coluna D -> Função
+
+                const userProof = [];
+                // Dissertativas
+                const dissertativas = [
+                    { q: headers[4], a: row[4], r: row[5] }, // E, F
+                    { q: headers[6], a: row[6], r: row[7] }, // G, H
+                    { q: headers[8], a: row[8], r: row[9] }, // I, J
+                ];
+                dissertativas.forEach((d, index) => {
+                    const questionId = d.q || `DISSERTATIVA ${index+1}`;
+                    userProof.push({
+                        type: 'dissertative',
+                        questionId: questionId,
+                        questionText: questionMap.get(questionId) || `Questão Dissertativa ${index+1}`,
+                        userAnswer: d.a || 'N/A',
+                        result: d.r || 'N/A'
+                    });
+                });
+
+                // Múltipla Escolha
+                for (let j = 10; j < headers.length; j++) {
+                    const questionId = headers[j];
+                    if (!questionId) continue;
+                    
+                    const questionText = questionMap.get(questionId);
+                    if (j === 17 || questionsToIgnore.includes(questionText)) {
+                        continue;
+                    }
+
+                    const cellAddress = XLSX.utils.encode_cell({ r: rowIndex + 1, c: j });
+                    const cell = acoSheet[cellAddress];
+                    const cellColor = cell?.s?.fgColor?.rgb || cell?.s?.bgColor?.rgb;
+                    const isCorrect = cellColor === '00C875' || cellColor === 'FF00C875';
+
+                    userProof.push({
+                        type: 'multiple-choice',
+                        questionId: questionId,
+                        questionText: questionText || questionId,
+                        userAnswer: cell?.v ?? 'N/A',
+                        isCorrect: isCorrect,
+                        correctAnswer: correctAnswers.get(questionId) || 'N/A'
+                    });
+                }
+                
+                let score;
+                const scoreRaw = row[17];
+                if (typeof scoreRaw === 'number' && scoreRaw >= 0 && scoreRaw <= 1) {
+                    score = scoreRaw * 10;
+                } else {
+                    score = parseFloat(String(scoreRaw || '0').replace('%', '')) / 10;
+                }
+
+                return {
+                    name: name,
+                    leader: leader,
+                    role: role,
+                    score: isNaN(score) ? 0 : score,
+                    proof: userProof
+                };
+            }).filter(Boolean);
+
+            return { acoData, questionMap };
+        };
+
 
         const parseSheetData = (worksheet) => {
             const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             const parsedData = json.slice(1).map(row => {
-                const name = row[1] || '';      // Coluna B: user MONDAY
-                const leader = row[2] || 'N/A'; // Coluna C: Lider
-                const role = row[3] || 'N/A';   // Coluna D: Função
+                const email = row[2] || ''; // Coluna C -> Email
+                if (!email) return null;
+
+                const name = email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                const leader = row[1] || 'N/A'; // Coluna B -> LÍDER
+                const role = row[3] || 'N/A';   // Coluna D -> Função
                 const scoreRaw = row[17];       // Coluna R: Nota Final
 
-                if (!name || scoreRaw === undefined || scoreRaw === null) return null;
+                if (scoreRaw === undefined || scoreRaw === null) return null;
 
                 let score;
-
-                // This logic robustly handles different formats for percentages from Excel.
-                // Case 1: The value is a number between 0 and 1 (e.g., Excel cell with 50% might be read as 0.5).
                 if (typeof scoreRaw === 'number' && scoreRaw >= 0 && scoreRaw <= 1) {
-                    score = scoreRaw * 10; // Convert to a 0-10 scale (e.g., 0.5 * 10 = 5).
-                } 
-                // Case 2: The value is a string (e.g., "50%") or a whole number (e.g., 50).
-                else {
-                    // Convert to string, remove percentage sign, parse, and then divide by 10.
+                    score = scoreRaw * 10;
+                } else {
                     score = parseFloat(String(scoreRaw).replace('%', '')) / 10;
                 }
                 
-                if (isNaN(score)) return null; // If conversion results in NaN, skip this row.
+                if (isNaN(score)) return null;
 
                 return { name, leader, role, score };
-            }).filter(Boolean); // Remove null entries.
+            }).filter(Boolean);
             return parsedData;
         };
 
@@ -689,9 +793,44 @@
                 confirmModal.classList.add('hidden');
             };
         };
+        
+        const openProofModal = (username) => {
+            const userData = currentResults.find(r => r.name === username);
+            if (!userData || !userData.proof) return;
+
+            proofModalTitle.textContent = `Prova de ${userData.name}`;
+            proofModalContent.innerHTML = ''; // Limpa conteúdo anterior
+            
+            userData.proof.forEach(item => {
+                let content = '';
+                if (item.type === 'dissertative') {
+                    const isCorrect = String(item.result).toUpperCase() === 'CERTO';
+                    const resultClass = isCorrect ? 'text-green-600' : 'text-red-600';
+                    content = `
+                        <div class="p-4 border rounded-lg">
+                            <p class="font-semibold text-gray-800">${item.questionText}</p>
+                            <p class="mt-2 text-gray-600 bg-gray-50 p-2 rounded"><b>Resposta:</b> ${item.userAnswer}</p>
+                            <p class="mt-2 font-bold ${resultClass}">${item.result}</p>
+                        </div>
+                    `;
+                } else if (item.type === 'multiple-choice') {
+                    const resultClass = item.isCorrect ? 'text-green-600' : 'text-red-600';
+                    content = `
+                        <div class="p-4 border rounded-lg">
+                            <p class="font-semibold text-gray-800">${item.questionText}</p>
+                            <p class="mt-2 text-gray-600"><b>Sua Resposta:</b> <span class="${resultClass}">${item.userAnswer}</span></p>
+                            ${!item.isCorrect ? `<p class="mt-1 text-green-700"><b>Resposta Correta:</b> ${item.correctAnswer}</p>` : ''}
+                        </div>
+                    `;
+                }
+                proofModalContent.innerHTML += content;
+            });
+
+            proofModal.classList.remove('hidden');
+        };
 
         const updateFileLabel = (input, label) => {
-            const fileName = input.files.length > 0 ? input.files[0].name : `Carregar Planilha (com abas MAP e ACO)`;
+            const fileName = input.files.length > 0 ? input.files[0].name : `Carregar Planilha (com abas MAP, ACO e PROVA)`;
             label.textContent = fileName;
             label.parentElement.classList.toggle('has-file', input.files.length > 0);
         };
@@ -724,6 +863,18 @@
         exportPdfBtn.addEventListener('click', exportToPDF);
         exportExcelBtn.addEventListener('click', exportToExcel);
         modalCancelBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
+        proofModalClose.addEventListener('click', () => proofModal.classList.add('hidden'));
+        proofModal.addEventListener('click', (e) => {
+            if (e.target === proofModal) proofModal.classList.add('hidden');
+        });
+
+        resultsGrid.addEventListener('click', (e) => {
+            const card = e.target.closest('.result-card');
+            if (card && card.dataset.username) {
+                openProofModal(card.dataset.username);
+            }
+        });
+
         toggleLiftSwitch.addEventListener('change', () => {
             localStorage.setItem('isLiftVisible', toggleLiftSwitch.checked);
             applyLiftVisibility();
